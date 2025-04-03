@@ -6,6 +6,33 @@ if (!isset($_SESSION['role']) || $_SESSION['role'] !== 'admin') {
     $isAdmin = true;
 }
 
+// Kết nối đến cơ sở dữ liệu
+require_once 'app/config/database.php';
+
+// Số lượng nhân viên mỗi trang
+$limit = 5; 
+// Lấy số trang từ URL, nếu không có thì mặc định là 1
+$page = isset($_GET['page']) ? (int)$_GET['page'] : 1;
+$offset = ($page - 1) * $limit;
+
+// Truy vấn để lấy tổng số nhân viên
+$totalResult = $conn->query("SELECT COUNT(*) as total FROM nhanvien");
+$totalRow = $totalResult->fetch_assoc();
+$totalEmployees = $totalRow['total'];
+$totalPages = ceil($totalEmployees / $limit);
+
+// Truy vấn để lấy danh sách nhân viên với phân trang
+$sql = "SELECT * FROM nhanvien LIMIT $limit OFFSET $offset"; 
+$result = $conn->query($sql);
+$employees = $result->fetch_all(MYSQLI_ASSOC);
+?>
+
+<?php
+$genderImages = [
+    'Nam' => 'man.jpg',
+    'Nữ' => 'woman.jpg',
+    // Có thể thêm giới tính khác nếu cần
+];
 ?>
 
 <!DOCTYPE html>
@@ -77,6 +104,19 @@ if (!isset($_SESSION['role']) || $_SESSION['role'] !== 'admin') {
             background-color: #4CAF50;
             color: white;
         }
+        .login-button {
+            display: block;
+            text-align: center;
+            margin: 20px;
+            background-color: #007BFF;
+            color: white;
+            padding: 10px;
+            border-radius: 5px;
+            text-decoration: none;
+        }
+        .login-button:hover {
+            background-color: #0056b3;
+        }
     </style>
 </head>
 <body>
@@ -97,14 +137,16 @@ if (!isset($_SESSION['role']) || $_SESSION['role'] !== 'admin') {
         <tr>
             <td><?= $employee['Ma_NV'] ?></td>
             <td><?= $employee['Ten_NV'] ?></td>
-            <td><img src='img/<?= ($employee['Phai'] == 'Nữ') ? 'woman.jpg' : 'man.jpg' ?>' alt='<?= $employee['Phai'] ?>'></td>
+            <td>
+                <img src='img/<?= isset($genderImages[$employee['Phai']]) ? $genderImages[$employee['Phai']] : 'default.jpg' ?>' alt='<?= $employee['Phai'] ?>'>
+            </td>
             <td><?= $employee['Noi_Sinh'] ?></td>
-            <td><?= $employee['Ten_Phong'] ?></td>
-            <td><?= $employee['Luong'] ?></td>
+            <td><?= $employee['Ma_Phong'] ?></td>
+            <td><?= number_format($employee['Luong'], 0, ',', '.') ?> VNĐ</td>
             <td class="action-links">
                 <?php if ($isAdmin): ?>
                     <a href='edit_employee.php?id=<?= $employee['Ma_NV'] ?>'>Sửa</a>
-                    <a href='delete.php?id=<?= $employee['Ma_NV'] ?>'>Xóa</a>
+                    <a href='delete.php?id=<?= $employee['Ma_NV'] ?>' onclick="return confirm('Bạn có chắc chắn muốn xóa?');">Xóa</a>
                 <?php else: ?>
                     <span style="color: gray;">Không có quyền</span>
                 <?php endif; ?>
@@ -120,7 +162,7 @@ if (!isset($_SESSION['role']) || $_SESSION['role'] !== 'admin') {
     <?php endif; ?>
 
     <?php for ($i = 1; $i <= $totalPages; $i++): ?>
-        <a href="?page=<?= $i ?>"><?= $i ?></a>
+        <a href="?page=<?= $i ?>" <?= ($i == $page) ? 'style="font-weight: bold;"' : '' ?>><?= $i ?></a>
     <?php endfor; ?>
 
     <?php if ($page < $totalPages): ?>
@@ -128,7 +170,11 @@ if (!isset($_SESSION['role']) || $_SESSION['role'] !== 'admin') {
     <?php endif; ?>
 </div>
 
-<a href="app/views/add_employee.php" style="display: block; text-align: center; margin: 20px; background-color: #4CAF50; color: white; padding: 10px; border-radius: 5px; text-decoration: none;">Thêm Nhân Viên</a>
+<?php if ($isAdmin): ?>
+    <a href="app/views/add_employee.php" style="display: block; text-align: center; margin: 20px; background-color: #4CAF50; color: white; padding: 10px; border-radius: 5px; text-decoration: none;">Thêm Nhân Viên</a>
+<?php endif; ?>
+<a href="login.php" class="login-button">Đăng Nhập</a>
+<a href="logout.php" style="display: block; text-align: center; margin: 20px; background-color: #e74c3c; color: white; padding: 10px; border-radius: 5px; text-decoration: none;">Đăng Xuất</a>
 
 </body>
 </html>
